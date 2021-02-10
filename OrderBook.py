@@ -19,22 +19,33 @@ class LimitOrder:
         self.params = params
 
     def update(self, v):
+        '''
+        Updates the volume via a proisson process for limit orders.
+        '''
         lam = self.lam
         nu = self.nu
         size = self.size
-        v += (np.random.poisson(lam) - np.random.poisson(nu * v)) * size
+        v += (np.random.poisson(lam) - np.random.poisson(nu * v)) * size #Orders come and are cancelled at a uniform order size.
         return np.maximum(v, 0)
 
     def gen_vol(self, t):
+        '''
+        Generates the volume up until some time t.
+        '''
         lam = self.lam
         size = self.size
-        v = np.random.poisson(lam) * size
+        v = np.random.poisson(lam) * size #Initial volume. 
         upb = min(t, 10000)
         for i in range(upb):
             v = self.update(v)
         return v
 
     def is_valid(self, vol, t):
+        '''
+        Once the volume at the best bid/ask is depleted, we call gen_vol to generate the volume at the
+        next price level. Count keeps track of the levels we need to traverse to get to the next best price
+        since it possible that there is no volume at the adjacent price level. 
+        '''
         count = int(0)
         while vol <= 0:
             vol = self.gen_vol(t)
@@ -56,6 +67,9 @@ class MarketOrder:
         self.params = params
 
     def update_bid_ask_price(self, m, x):
+        '''
+        Updates the bid and ask based on the Madhavan-Richardson-Roomans model. 
+        '''
         G = self.G
         rho = self.rho
         mu_t_1 = m + G * rho * x
@@ -64,6 +78,9 @@ class MarketOrder:
         return bid, ask
 
     def gen_vol(self):
+        '''
+        Generates volume of a market order. 
+        '''
         mu = self.mu
         size = self.size
         mkt = np.random.poisson(mu) * size
@@ -141,6 +158,9 @@ class OrderBook():
         return bid_vol, bid_pr, ask_vol, ask_pr
 
     def update_mkt_buy(self, ask_vol, ask_pr, t):
+        '''
+        Updates the LOB based on a market buy.
+        '''
         mkt_buy_vol = self.MarketOrder.gen_vol()
         temp = mkt_buy_vol
         count_ask = int(0)
@@ -166,6 +186,7 @@ class OrderBook():
         return next_ask_vol, next_ask_pr, temp, x
 
     def update_mkt_sell(self, bid_vol, bid_pr, t):
+        "Updates the LOB based on a market sell."
         mkt_sell_vol = self.MarketOrder.gen_vol()
         temp = mkt_sell_vol
         count_bid = int(0)
@@ -178,7 +199,7 @@ class OrderBook():
         else:
             x = -1
             while mkt_sell_vol > 0:
-                temp = mkt_sell_vold
+                temp = mkt_sell_vol
                 mkt_sell_vol -= bid_vol
                 bid_vol -= temp
 
@@ -191,6 +212,9 @@ class OrderBook():
         return next_bid_vol, next_bid_pr, temp, x
 
     def update_lob(self, bid_vol, bid_pr, ask_vol, ask_pr, t):
+        '''
+        Updates the LOB with both a limit order and market buy or sell based on the probability p. 
+        '''
         bid_vol, bid_pr, ask_vol, ask_pr = self.update_limit(bid_vol, bid_pr, ask_vol, ask_pr, t)
         if np.random.binomial(1, self.p) == 1:
             ask_vol, ask_pr, mkt_vol, x = self.update_mkt_buy(ask_vol, ask_pr, t)
@@ -213,6 +237,9 @@ class OrderBook():
         self.p = p
 
     def simulate_one_day(self, rho):
+        '''
+        Simulates a day of the LOB. 
+        '''
         # make sure has only one trading day of time
         assert (self.end_time - self.start_time).days < 1
 
