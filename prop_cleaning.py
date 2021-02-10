@@ -88,6 +88,10 @@ def match_tq(qdata, tdata, adjustment=2):
 
 def trade_classify(data, method="FTT"):
     # Classifies trades based on the forward tick test. Also computes Ordersign imbalance
+
+    #Can also add the rule, trades above mid price = +1 and likewise. Discard trades at mid-price or
+    #inside the spread. See Nonlinear price impact from linear models. 
+    #Merge based on transaction sign and millisecond time-stamp. 
     if method == "FTT":
         FTT_full(data)
         data["OSIFTT"] = np.cumsum(data["SIGNFTT"]) / np.arange(1, data.shape[0] + 1)
@@ -281,6 +285,9 @@ def gen_prop_data(trade, quote):
     :param trade: trade dataset
     :param quote: quote dataset
     :return: gives dataset for price propagator model
+
+
+    n refers to trades that do not change mid price and c refers to those that do. 
     """
     master = trade.merge(quote, on='TIME', how='outer')
     master.index = master.TIME
