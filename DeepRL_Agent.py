@@ -152,7 +152,7 @@ class Agent:
         '''
         rate = 0.01 #Learning rate.
         inputs = keras.Input(shape=(num_inputs,), name='digits')
-        x = layers.LayerNormalization()(inputs)
+        x = layers.BatchNormalization()(inputs)
         x = layers.Dense(250, activation='relu', name='dense_1', bias_initializer=keras.initializers.Constant(0.01), kernel_initializer=keras.initializers.TruncatedNormal(mean=0.0, stddev=0.05, seed=1))(x)
     
         x = layers.Dropout(.5)(x)
@@ -351,7 +351,7 @@ class Agent:
     
     
                         r = samp["Reward"]
-                        r += 100*gamma*sell*(train_eps[episode][end_time,keys["Price"]]-train_eps[episode][start_time,keys["Price"]])-alpha*(100*sell)**2
+                        r += 100*gamma*sell*(train_eps[episode][end_time,keys["Price"]]-train_eps[episode][end_time-1,keys["Price"]])-alpha*(100*sell)**2
 
                         y.append(r) 
                     else:
@@ -366,7 +366,7 @@ class Agent:
                         states_Q_temp = Q_states(temp_states,init_inv, length)
 
                         #Get the action
-                        action_ = np.argmax(Q_target.predict(states_Q_temp))
+                        action_ = np.argmax(Q.predict(states_Q_temp))
                         r = samp["Reward"] + gamma*Q_target.predict(states_Q_temp[action_].reshape((1,3+len(features))))[0][0]
                         y.append(r)
             
@@ -384,6 +384,8 @@ class Agent:
                 Q_target.set_weights(Q.get_weights()) 
         #print(states_data)
         plt.plot(res)
+        plt.xlabel("Number of Episodes")
+        plt.ylabel("Validation Error")
         self.Main_Model = Q
     def Performance_Evaluation(self,init_inv, eps, alpha, length, features, keys, model):
         '''
